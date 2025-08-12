@@ -19,6 +19,9 @@ It’s optimized for **AWS Batch + Step Functions orchestration**, **containeriz
 ---
 
 ## Architecture
+
+![AWS Architecture Diagram](docs/architecture.png)
+
 **Core AWS Services:**
 - **IAM** – Least-privilege roles for Batch jobs, Step Functions, and S3 access
 - **VPC** – Isolated networking with public NAT for pulling ECR images and private subnets for Batch tasks
