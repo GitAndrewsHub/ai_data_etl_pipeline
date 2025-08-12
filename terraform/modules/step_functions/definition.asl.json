@@ -1,0 +1,111 @@
+{
+  "Comment": "Sequential pipeline stages, parallel WARC file processing within each stage",
+  "StartAt": "MapIngest",
+  "States": {
+    "MapIngest": {
+      "Type": "Map",
+      "ItemsPath": "$.warc_urls",
+      "MaxConcurrency": 100,
+      "ItemSelector": {
+        "warc_url.$": "$$.Map.Item.Value"
+      },
+      "Iterator": {
+        "StartAt": "TextIngest",
+        "States": {
+          "TextIngest": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::batch:submitJob.sync",
+            "Parameters": {
+              "JobDefinition": "${job_definition_arns.text_ingest}",
+              "JobName": "text-ingest",
+              "JobQueue": "${job_queue_arn}",
+              "ContainerOverrides": {
+                "Command.$": "States.Array('python','ingestion/text_ingest.py','--warc_url',$.warc_url)"
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "Next": "TextFilter"
+    },
+    "TextFilter": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "text-filter",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","filtering/text_filter.py"]
+        }
+      },
+      "Next": "ToxicityFilter"
+    },
+    "ToxicityFilter": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "toxicity-filter",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","filtering/toxicity_filter.py"]
+        }
+      },
+      "Next": "Deduplication"
+    },
+    "Deduplication": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "deduplication",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","deduplication/deduplicate.py"]
+        }
+      },
+      "Next": "GlobalDeduplication"
+    },
+    "GlobalDeduplication": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "global-deduplication",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","deduplication/global_deduplicate.py"]
+        }
+      },
+      "Next": "TextNormalize"
+    },
+    "TextNormalize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "text-normalize",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","normalization/text_normalize.py"]
+        }
+      },
+      "Next": "Tokenize"
+    },
+    "Tokenize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::batch:submitJob.sync",
+      "Parameters": {
+        "JobDefinition": "${job_definition_arns.text_ingest}",
+        "JobName": "tokenize",
+        "JobQueue": "${job_queue_arn}",
+        "ContainerOverrides": {
+          "Command": ["python","tokenization/tokenize_llama.py"]
+        }
+      },
+      "End": true
+    }
+  }
+}

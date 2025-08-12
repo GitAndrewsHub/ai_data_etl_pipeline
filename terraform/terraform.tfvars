@@ -1,0 +1,13 @@
+region              = "us-east-1"
+vpc_cidr            = "10.0.0.0/16"
+azs                 = ["us-east-1a","us-east-1b"]
+public_subnets      = ["10.0.101.0/24","10.0.102.0/24"]
+private_subnets     = ["10.0.1.0/24","10.0.2.0/24"]
+security_group_id   = "sg-0724272f01d54fc7a"
+endpoint_sg_id      = "sg-0724272f01d54fc7a"
+bucket_name         = "my-cc-pipeline-s3"
+audit_bucket_name   = "my-cc-pipeline-audit-logs"
+ecr_repository_name = "multi-modal-pipeline"
+state_machine_name  = "multi-modal-pipeline-sm"
+name = "cc-pipeline-vpc"
+cidr = "10.0.0.0/16"  # or whatever your network range is
